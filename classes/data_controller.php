@@ -59,7 +59,7 @@ class data_controller extends \core_customfield\data_controller {
             foreach ($values as $value) {
                 $key = array_key_exists($value, $options);
                 if ($key !== false) {
-                    $defaultvalues .= (empty($defaultvalues) ? '' : ', ') . $value;
+                    $defaultvalues .= (empty($defaultvalues) ? '' : ',') . $value;
                 }
             }
         }
@@ -108,7 +108,8 @@ class data_controller extends \core_customfield\data_controller {
      *    fields for this instance will be added, otherwise the default values will be added.
      */
     public function instance_form_before_set_data(\stdClass $instance) {
-        $instance->{$this->get_form_element_name()} = implode(',', $this->get_value());
+        $instance->{$this->get_form_element_name()} = $this->get_field()->get_configdata_property('multiselect')
+            ? $this->get_values() : $this->get_value();
     }
     /**
      * Saves the data coming from form
@@ -150,15 +151,38 @@ class data_controller extends \core_customfield\data_controller {
     }
 
     /**
-     * Returns the value as it is stored in the database or default value if data record is not present
+     * Returns the value as it is stored in the database (ids separated by comma) or the default value
      *
-     * @return array
+     * Core puts this value straight into the course backup (handler::get_instance_data_for_backup()) and restores it
+     * with set(datafield, value), so it must be the stored string, never an array.
+     *
+     * @return string
      */
     public function get_value() {
         if (!$this->get('id')) {
-            return explode(',', $this->get_default_value());
+            return (string) $this->get_default_value();
         }
-        return explode(',', $this->get($this->datafield()));
+        return (string) $this->get($this->datafield());
+    }
+
+    /**
+     * Returns the selected option ids, in the stored order
+     *
+     * @return string[]
+     */
+    public function get_values(): array {
+        return self::split_values($this->get_value());
+    }
+
+    /**
+     * Splits a stored value (ids separated by comma) into a list of ids
+     *
+     * @param string|null $value
+     * @return string[]
+     */
+    public static function split_values(?string $value): array {
+        $values = array_map('trim', explode(',', (string) $value));
+        return array_values(array_filter($values, fn(string $v): bool => $v !== ''));
     }
 
     /**
@@ -168,7 +192,7 @@ class data_controller extends \core_customfield\data_controller {
      * @return bool
      */
     protected function is_empty($value): bool {
-        return empty($value);
+        return self::split_values(is_array($value) ? implode(',', $value) : (string) $value) === [];
     }
 
     /**
@@ -177,14 +201,14 @@ class data_controller extends \core_customfield\data_controller {
      * @return mixed|null value or null if empty
      */
     public function export_value() {
-        $value = $this->get_value();
+        $values = $this->get_values();
 
-        if ($this->is_empty($value)) {
+        if (!$values) {
             return null;
         }
         $completevalue = '';
         $options = field_controller::get_options_array($this->get_field());
-        foreach ($value as $val) {
+        foreach ($values as $val) {
             if (array_key_exists($val, $options)) {
                 $completevalue .= (empty($completevalue) ? '' : ', ') .
                  format_string($options[$val], true,
