@@ -164,8 +164,14 @@ final class data_controller_test extends \advanced_testcase {
 
         $course = $this->create_course_with_values();
 
-        $bc = new backup_controller(backup::TYPE_1COURSE, $course->id, backup::FORMAT_MOODLE,
-            backup::INTERACTIVE_NO, backup::MODE_GENERAL, $USER->id);
+        $bc = new backup_controller(
+            backup::TYPE_1COURSE,
+            $course->id,
+            backup::FORMAT_MOODLE,
+            backup::INTERACTIVE_NO,
+            backup::MODE_GENERAL,
+            $USER->id
+        );
         $bc->execute_plan();
         $results = $bc->get_results();
         $bc->destroy();
@@ -175,8 +181,14 @@ final class data_controller_test extends \advanced_testcase {
         $results['backup_destination']->extract_to_pathname($fp, make_backup_temp_directory($backupid));
 
         $newcourseid = \restore_dbops::create_new_course('Restored', 'restored', $course->category);
-        $rc = new restore_controller($backupid, $newcourseid, backup::INTERACTIVE_NO, backup::MODE_GENERAL,
-            $USER->id, backup::TARGET_NEW_COURSE);
+        $rc = new restore_controller(
+            $backupid,
+            $newcourseid,
+            backup::INTERACTIVE_NO,
+            backup::MODE_GENERAL,
+            $USER->id,
+            backup::TARGET_NEW_COURSE
+        );
         $this->assertTrue($rc->execute_precheck());
         $rc->execute_plan();
         $rc->destroy();
